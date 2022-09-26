@@ -1,0 +1,51 @@
+desc 'Hero 自动化升级维护私有库'
+lane :updatePod do |options|
+
+tagNum = options[:tag]
+podspecName = options[:specName]
+
+# 航道上需要执行的操作
+# 具体action到 https://docs.fastlane.tools/actions 上面查找
+# 这里的路径以仓库根目录为准
+
+# 1、修改spec文件（修改s.version，s.description等）
+# 2、pod install （使Example与pod下来的库产生关联）
+cocoapods(
+  clean: true,
+  podfile: "./Example/Podfile"
+)
+
+
+# 3、提交本地仓库代码至远程仓库
+git_add(path: ".")
+git_commit(path: ".", message: "upgrade repo")
+push_to_git_remote
+
+
+# 4、打标签，并提交至远程
+# 先验证tag是否存在，如果存在则删除本地标签和远程标签【前提是你拥有删除的权限】
+if git_tag_exists(tag: tagNum)
+  UI.message("您输入的tag:#{tagNum}已存在，即将自动清除") 
+  remove_git_tag(tagNum: tagNum)
+end
+add_git_tag(
+  tag: tagNum
+)
+push_git_tags
+
+
+# 5、验证spec，并提至私有索引库
+pod_lib_lint(allow_warnings: true)
+# podspec的名字需要由外界传入
+#这里的***Spec 由于是本地repod的仓库，基本不会变化，可以写死
+pod_push(path: "#{podspecName}", repo: "***Spec", allow_warnings:true)
+
+end
+
+
+
+
+
+
+
+
